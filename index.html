@@ -1,48 +1,91 @@
+```html
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Skills in Testing - Journey Planning Test Strategy</title>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }
-    .header { text-align: center; margin-bottom: 40px; }
-    .doc-container { border: 1px solid #ddd; border-radius: 8px; padding: 20px; max-height: 80vh; overflow-y: auto; background: #fafafa; }
-    .loading { text-align: center; color: #666; }
-    .error { color: #d00; }
-    button { background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
-    button:hover { background: #059669; }
-    .download { background: #6b7280; margin-left: 10px; }
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      margin: 0; padding: 20px; 
+      background: #f8fafc; 
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .header { 
+      text-align: center; 
+      background: white; 
+      padding: 40px 20px; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+      margin-bottom: 20px; 
+    }
+    h1 { color: #1e40af; margin: 0; }
+    .pdf-viewer { 
+      background: white; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+      overflow: hidden; 
+      height: 80vh; 
+      position: relative; 
+    }
+    #pdf-canvas { 
+      width: 100%; 
+      height: 100%; 
+      border: none; 
+    }
+    .controls { 
+      text-align: center; 
+      margin: 20px 0; 
+    }
+    button { 
+      background: #3b82f6; 
+      color: white; 
+      border: none; 
+      padding: 12px 24px; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-size: 16px; 
+      margin: 0 8px; 
+    }
+    button:hover { background: #2563eb; }
+    .download { background: #6b7280; }
+    .download:hover { background: #4b5563; }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Skills in Testing</h1>
-    <p>Test Management & Automation Case Studies</p>
-  </div>
-  
-  <div class="doc-container" id="doc-container">
-    <div class="loading">Loading document...</div>
-  </div>
-  
-  <div style="text-align: center; margin-top: 20px;">
-    <button onclick="downloadDocx()">Download DOCX</button>
-    <a href="journey-planning-test-strategy.docx" class="download" style="display: inline-block; padding: 12px 24px; margin-left: 10px; color: white; text-decoration: none; border-radius: 6px; background: #6b7280;">Raw DOCX</a>
+  <div class="container">
+    <div class="header">
+      <h1>Skills in Testing</h1>
+      <p>Test Management & Automation Case Studies</p>
+      <p><strong>Journey Planning Test Strategy</strong> - T1 Consumer Mobile App</p>
+    </div>
+    
+    <div class="pdf-viewer">
+      <canvas id="pdf-canvas"></canvas>
+    </div>
+    
+    <div class="controls">
+      <button onclick="renderPage(currentPage - 1)">Previous</button>
+      <span id="page-info">Page 1 of 1</span>
+      <button onclick="renderPage(currentPage + 1)">Next</button>
+      <a href="journey-planning-test-strategy.docx" class="download" style="display: inline-block; padding: 12px 24px; margin-left: 20px; color: white; text-decoration: none; border-radius: 8px;">Download DOCX</a>
+    </div>
   </div>
 
-  <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
   <script>
-    mammoth.convertToHtml({arrayBuffer: await fetch('journey-planning-test-strategy.docx').then(r => r.arrayBuffer())})
-      .then(result => {
-        document.getElementById('doc-container').innerHTML = result.value;
-      })
-      .catch(error => {
-        document.getElementById('doc-container').innerHTML = '<div class="error">Error loading document: ' + error.message + '</div>';
-      });
-    
-    function downloadDocx() {
-      window.location.href = 'journey-planning-test-strategy.docx';
-    }
-  </script>
-</body>
-</html>
+    let pdfDoc = null;
+    let currentPage = 1;
+    const canvas = document.getElementById('pdf-canvas');
+    const ctx = canvas.getContext('2d');
+    const pageInfo = document.getElementById('page-info');
+
+    pdfjsLib.getDocument('journey-planning-test-strategy.pdf').promise.then(function(pdf) {
+      pdfDoc = pdf;
+      pageInfo.textContent = `Page 1 of ${pdfDoc.numPages}`;
+      renderPage(1);
+    });
+
+    function renderPage(num)
