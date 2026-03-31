@@ -1,53 +1,48 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Skills in Testing - Test Management & Automation</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Skills in Testing - Journey Planning Test Strategy</title>
   <style>
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      max-width: 720px;
-      margin: 64px auto;
-      padding: 0 20px;
-      line-height: 1.6;
-      color: #1f2937;
-    }
-    .card {
-      border: 1px solid #e5e7eb;
-      border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-    }
-    .button {
-      display: inline-block;
-      margin-top: 16px;
-      padding: 12px 24px;
-      border-radius: 10px;
-      background: #10b981;
-      color: white;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .button:hover { background: #059669; }
-    .intro { 
-      font-size: 1.1em; 
-      margin-bottom: 24px; 
-    }
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 40px; }
+    .doc-container { border: 1px solid #ddd; border-radius: 8px; padding: 20px; max-height: 80vh; overflow-y: auto; background: #fafafa; }
+    .loading { text-align: center; color: #666; }
+    .error { color: #d00; }
+    button { background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+    button:hover { background: #059669; }
+    .download { background: #6b7280; margin-left: 10px; }
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="header">
     <h1>Skills in Testing</h1>
-    <p class="intro">Leveraging test management and test automation expertise to deliver quality at scale.</p>
-    
-    <h2>Journey Planning Test Strategy</h2>
-    <p>Detailed test strategy for a T1 consumer mobile app covering GPS, network resilience, performance, security, accessibility, and device fragmentation.</p>
-    <a class="button" href="journey-planning-test-strategy.docx">Open Test Strategy Document</a>
-    
-    <hr style="margin: 40px 0; border: none; border-top: 1px solid #e5e7eb;" />
-    
-    <p><em>More test automation frameworks, case studies, and strategies coming soon.</em></p>
+    <p>Test Management & Automation Case Studies</p>
   </div>
+  
+  <div class="doc-container" id="doc-container">
+    <div class="loading">Loading document...</div>
+  </div>
+  
+  <div style="text-align: center; margin-top: 20px;">
+    <button onclick="downloadDocx()">Download DOCX</button>
+    <a href="journey-planning-test-strategy.docx" class="download" style="display: inline-block; padding: 12px 24px; margin-left: 10px; color: white; text-decoration: none; border-radius: 6px; background: #6b7280;">Raw DOCX</a>
+  </div>
+
+  <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+  <script>
+    mammoth.convertToHtml({arrayBuffer: await fetch('journey-planning-test-strategy.docx').then(r => r.arrayBuffer())})
+      .then(result => {
+        document.getElementById('doc-container').innerHTML = result.value;
+      })
+      .catch(error => {
+        document.getElementById('doc-container').innerHTML = '<div class="error">Error loading document: ' + error.message + '</div>';
+      });
+    
+    function downloadDocx() {
+      window.location.href = 'journey-planning-test-strategy.docx';
+    }
+  </script>
 </body>
 </html>
