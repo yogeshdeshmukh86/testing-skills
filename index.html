@@ -1,91 +1,544 @@
-```html
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Skills in Testing - Journey Planning Test Strategy</title>
-  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="https://mozilla.github.io/pdf.js/build/pdf.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Suite Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
-    body { 
-      font-family: system-ui, -apple-system, sans-serif; 
-      margin: 0; padding: 20px; 
-      background: #f8fafc; 
-    }
-    .container { max-width: 1000px; margin: 0 auto; }
-    .header { 
-      text-align: center; 
-      background: white; 
-      padding: 40px 20px; 
-      border-radius: 12px; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-      margin-bottom: 20px; 
-    }
-    h1 { color: #1e40af; margin: 0; }
-    .pdf-viewer { 
-      background: white; 
-      border-radius: 12px; 
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-      overflow: hidden; 
-      height: 80vh; 
-      position: relative; 
-    }
-    #pdf-canvas { 
-      width: 100%; 
-      height: 100%; 
-      border: none; 
-    }
-    .controls { 
-      text-align: center; 
-      margin: 20px 0; 
-    }
-    button { 
-      background: #3b82f6; 
-      color: white; 
-      border: none; 
-      padding: 12px 24px; 
-      border-radius: 8px; 
-      cursor: pointer; 
-      font-size: 16px; 
-      margin: 0 8px; 
-    }
-    button:hover { background: #2563eb; }
-    .download { background: #6b7280; }
-    .download:hover { background: #4b5563; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    @keyframes shimmer { from{background-position:-400px 0} to{background-position:400px 0} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    @keyframes slideIn { from{opacity:0;transform:translateX(12px)} to{opacity:1;transform:translateX(0)} }
+    .fade-up { animation: fadeUp 0.4s ease both; }
+    .fade-in { animation: fadeIn 0.3s ease both; }
+    .slide-in { animation: slideIn 0.3s ease both; }
+    .page-transition { animation: fadeIn 0.25s ease both; }
+    .skeleton { background: linear-gradient(90deg,#1e293b 25%,#2d3748 50%,#1e293b 75%); background-size:400px 100%; animation:shimmer 1.4s infinite; border-radius:6px; }
+    .skeleton-light { background: linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%); background-size:400px 100%; animation:shimmer 1.4s infinite; border-radius:6px; }
+    .btn-primary { background:linear-gradient(135deg,#6366f1,#818cf8); color:#fff; border:none; border-radius:10px; padding:12px 28px; font-size:15px; font-weight:600; cursor:pointer; transition:transform 0.15s,box-shadow 0.15s; box-shadow:0 4px 14px rgba(99,102,241,0.3); }
+    .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(99,102,241,0.4); }
+    .btn-primary:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
+    .btn-secondary { border-radius:8px; padding:7px 16px; font-size:13px; cursor:pointer; font-weight:500; transition:all 0.15s; }
+    .tab-btn { transition:all 0.2s; }
+    .expand-arrow { transition:transform 0.2s; }
+    textarea:focus { outline: none; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Skills in Testing</h1>
-      <p>Test Management & Automation Case Studies</p>
-      <p><strong>Journey Planning Test Strategy</strong> - T1 Consumer Mobile App</p>
-    </div>
-    
-    <div class="pdf-viewer">
-      <canvas id="pdf-canvas"></canvas>
-    </div>
-    
-    <div class="controls">
-      <button onclick="renderPage(currentPage - 1)">Previous</button>
-      <span id="page-info">Page 1 of 1</span>
-      <button onclick="renderPage(currentPage + 1)">Next</button>
-      <a href="journey-planning-test-strategy.docx" class="download" style="display: inline-block; padding: 12px 24px; margin-left: 20px; color: white; text-decoration: none; border-radius: 8px;">Download DOCX</a>
-    </div>
-  </div>
+  <div id="root"></div>
 
-  <script>
-    let pdfDoc = null;
-    let currentPage = 1;
-    const canvas = document.getElementById('pdf-canvas');
-    const ctx = canvas.getContext('2d');
-    const pageInfo = document.getElementById('page-info');
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-    pdfjsLib.getDocument('journey-planning-test-strategy.pdf').promise.then(function(pdf) {
-      pdfDoc = pdf;
-      pageInfo.textContent = `Page 1 of ${pdfDoc.numPages}`;
-      renderPage(1);
-    });
+    const PREPOPULATED = `Feature: Journey Planning App
 
-    function renderPage(num)
+As a user, I want to plan a journey from an origin to a destination so that I can travel efficiently.
+
+Requirements:
+1. User can enter an origin and destination (city, address, or postcode)
+2. App fetches available routes via a routing API
+3. User can select travel mode: driving, walking, cycling, or public transport
+4. App displays estimated travel time, distance, and step-by-step directions
+5. User can save a journey to their profile (requires login)
+6. App shows real-time traffic conditions for driving routes
+7. User can set a departure or arrival time
+8. App supports multiple route alternatives (fastest, shortest, scenic)
+9. User receives notifications for disruptions on saved journeys
+10. App works offline with last cached route data`;
+
+    const CATEGORIES = [
+      { key: "positive", label: "Positive", icon: "✅", color: "#22c55e", bg: { dark: "#052e16", light: "#f0fdf4" } },
+      { key: "negative", label: "Negative", icon: "❌", color: "#ef4444", bg: { dark: "#2d0a0a", light: "#fff5f5" } },
+      { key: "performance", label: "Performance", icon: "⚡", color: "#f59e0b", bg: { dark: "#2d1a00", light: "#fffbeb" } },
+      { key: "security", label: "Security", icon: "🔒", color: "#818cf8", bg: { dark: "#1a1040", light: "#f5f3ff" } },
+      { key: "accessibility", label: "Accessibility", icon: "♿", color: "#22d3ee", bg: { dark: "#0a2030", light: "#ecfeff" } },
+    ];
+
+    const STEPS = [
+      { label: "Analysing requirements...", icon: "🔍" },
+      { label: "Generating positive scenarios...", icon: "✅" },
+      { label: "Generating negative scenarios...", icon: "❌" },
+      { label: "Generating performance scenarios...", icon: "⚡" },
+      { label: "Generating security scenarios...", icon: "🔒" },
+      { label: "Generating accessibility scenarios...", icon: "♿" },
+      { label: "Preparing state diagram...", icon: "🗺" },
+      { label: "Finalising output...", icon: "✨" },
+    ];
+
+    const FEATURES = [
+      { icon: "🧪", title: "5 Test Categories", desc: "Positive, Negative, Performance, Security & Accessibility" },
+      { icon: "🗺", title: "State Diagram", desc: "Mermaid model-based happy path diagram" },
+      { icon: "📋", title: "Full Test Cases", desc: "Steps, preconditions & expected results" },
+      { icon: "🥒", title: "Gherkin / BDD", desc: "Export any scenario to BDD format" },
+      { icon: "📊", title: "Gap Analysis", desc: "AI audits coverage and flags weak spots" },
+      { icon: "📤", title: "JIRA & CSV Export", desc: "Ready to export to your test management tool" },
+    ];
+
+    function EmptyState({ icon, title, desc, action, onAction, dark }) {
+      const tx = dark ? "#e2e8f0" : "#1e293b", mu = dark ? "#64748b" : "#94a3b8";
+      return (
+        <div className="fade-up" style={{ textAlign: "center", padding: "60px 24px" }}>
+          <div style={{ fontSize: 52, marginBottom: 16, animation: "pulse 3s ease-in-out infinite" }}>{icon}</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: tx, marginBottom: 8 }}>{title}</div>
+          <div style={{ fontSize: 14, color: mu, marginBottom: 24, maxWidth: 320, margin: "0 auto 24px" }}>{desc}</div>
+          {action && <button className="btn-primary" onClick={onAction} style={{ fontSize: 14, padding: "10px 24px" }}>{action}</button>}
+        </div>
+      );
+    }
+
+    function LandingPage({ onStart, dark }) {
+      const tx = dark ? "#e2e8f0" : "#1e293b", mu = dark ? "#64748b" : "#94a3b8";
+      const bd = dark ? "#1e293b" : "#e2e8f0", card = dark ? "#0f172a" : "#fff";
+      return (
+        <div className="fade-in">
+          <div style={{ textAlign: "center", padding: "48px 16px 40px" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: dark ? "#1e1a3a" : "#ede9fe", border: "1px solid #6366f1", borderRadius: 99, padding: "4px 14px", fontSize: 12, color: "#818cf8", fontWeight: 600, marginBottom: 20 }}>✨ AI-powered QA tool</div>
+            <h1 style={{ fontSize: "clamp(28px,5vw,48px)", fontWeight: 800, color: tx, margin: "0 0 16px", lineHeight: 1.2, letterSpacing: "-1px" }}>
+              Generate your entire<br />
+              <span style={{ background: "linear-gradient(135deg,#6366f1,#22d3ee)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Test Suite in seconds</span>
+            </h1>
+            <p style={{ fontSize: "clamp(14px,2vw,17px)", color: mu, maxWidth: 520, margin: "0 auto 32px", lineHeight: 1.7 }}>Paste your feature requirements and instantly get comprehensive test scenarios, detailed test cases, state diagrams and coverage gap analysis.</p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+              <button className="btn-primary" onClick={onStart} style={{ fontSize: 16, padding: "14px 36px" }}>🚀 Get Started</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: mu }}><span>💡</span> Pre-filled example included</div>
+            </div>
+            <div style={{ fontSize: 12, color: mu, marginTop: 16 }}>Conceived & designed by <span style={{ color: "#a5b4fc", fontWeight: 600 }}>Yogesh Deshmukh</span></div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,240px),1fr))", gap: 14, marginBottom: 40 }}>
+            {FEATURES.map((f, i) => (
+              <div key={i} className="fade-up" style={{ animationDelay: `${i * 0.07}s`, background: card, border: `1px solid ${bd}`, borderRadius: 12, padding: "20px 18px" }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>{f.icon}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: tx, marginBottom: 4 }}>{f.title}</div>
+                <div style={{ fontSize: 12, color: mu, lineHeight: 1.5 }}>{f.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: card, border: `1px solid ${bd}`, borderRadius: 14, padding: "24px 20px" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: mu, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16, textAlign: "center" }}>How it works</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+              {["Paste requirements", "Generate scenarios", "Expand test cases", "Analyse coverage", "Export to JIRA / CSV"].map((s, i, arr) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ background: dark ? "#1e293b" : "#f1f5f9", borderRadius: 8, padding: "8px 14px", fontSize: 13, color: tx, fontWeight: 500, whiteSpace: "nowrap" }}><span style={{ color: "#818cf8", marginRight: 6 }}>{i + 1}.</span>{s}</div>
+                  {i < arr.length - 1 && <span style={{ color: mu, fontSize: 18 }}>→</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function StateDiagram({ states, transitions, selectedState, onSelectState, dark }) {
+      const [svg, setSvg] = useState(""); const [ready, setReady] = useState(false);
+      const mu = dark ? "#64748b" : "#94a3b8";
+      useEffect(() => {
+        if (window.mermaid) { setReady(true); return; }
+        const s = document.createElement("script");
+        s.src = "https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js";
+        s.onload = () => { window.mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" }); setReady(true); };
+        document.head.appendChild(s);
+      }, []);
+      useEffect(() => {
+        if (!ready || !states?.length) return;
+        const idMap = {}; states.forEach(s => { idMap[s.id] = s.label.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, ""); });
+        const lines = ["stateDiagram-v2", `    [*] --> ${idMap[states[0].id]}`];
+        states.forEach(s => lines.push(`    ${idMap[s.id]} : ${s.label}`));
+        transitions.forEach(t => { if (idMap[t.from] && idMap[t.to]) lines.push(`    ${idMap[t.from]} --> ${idMap[t.to]} : ${t.label}`); });
+        lines.push(`    ${idMap[states[states.length - 1].id]} --> [*]`);
+        window.mermaid.render("md-" + Date.now(), lines.join("\n")).then(({ svg: r }) => setSvg(r)).catch(() => setSvg(""));
+      }, [ready, states, transitions]);
+      if (!states?.length) return null;
+      return (
+        <div style={{ borderRadius: 10, background: dark ? "#0f172a" : "#f8fafc", border: `1px solid ${dark ? "#1e293b" : "#e2e8f0"}`, padding: 16, overflowX: "auto" }}>
+          {svg ? <div className="fade-in" dangerouslySetInnerHTML={{ __html: svg }} style={{ width: "100%", maxWidth: 860 }} />
+            : <div style={{ color: "#a5b4fc", fontSize: 13, textAlign: "center", padding: "24px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><div style={{ width: 16, height: 16, border: "2px solid #6366f1", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /> Rendering diagram...</div>}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, justifyContent: "center" }}>
+            {states.map((s, i) => { const isSel = selectedState === s.id, col = i === 0 ? "#22c55e" : i === states.length - 1 ? "#60a5fa" : "#818cf8"; return <button key={s.id} onClick={() => onSelectState(isSel ? null : s.id)} className="tab-btn" style={{ background: isSel ? (dark ? "#1e1a3a" : "#ede9fe") : (dark ? "#1e293b" : "#f1f5f9"), color: isSel ? col : mu, border: `1.5px solid ${isSel ? col : dark ? "#334155" : "#e2e8f0"}`, borderRadius: 99, padding: "4px 14px", fontSize: 12, cursor: "pointer", fontWeight: isSel ? 600 : 400 }}>{i === 0 ? "🟢" : i === states.length - 1 ? "🔵" : "⚪"} {s.label}</button>; })}
+          </div>
+        </div>
+      );
+    }
+
+    function GherkinModal({ testCase, onClose, dark }) {
+      const [gherkin, setGherkin] = useState(""); const [loading, setLoading] = useState(true);
+      const bg = dark ? "#0f172a" : "#fff", bd = dark ? "#1e293b" : "#e2e8f0", tx = dark ? "#e2e8f0" : "#1e293b";
+      useEffect(() => { (async () => { try { const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 400, messages: [{ role: "user", content: `Convert this test scenario to Gherkin BDD format. Return only the Gherkin syntax.\n\nTest scenario: ${testCase}` }] }) }); const data = await res.json(); setGherkin(data.content?.map(c => c.text || "").join("") || ""); } catch { setGherkin("Failed to convert."); } setLoading(false); })(); }, []);
+      return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(4px)" }} onClick={onClose}>
+          <div className="fade-up" style={{ background: bg, border: `1px solid ${bd}`, borderRadius: 16, padding: 24, maxWidth: 560, width: "100%" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: tx }}>🥒 Gherkin / BDD Format</span>
+              <button onClick={onClose} style={{ background: "none", border: "none", color: dark ? "#94a3b8" : "#64748b", fontSize: 22, cursor: "pointer" }}>×</button>
+            </div>
+            <div style={{ fontSize: 12, color: dark ? "#64748b" : "#94a3b8", marginBottom: 12, fontStyle: "italic", padding: "8px 12px", background: dark ? "#1e293b" : "#f8fafc", borderRadius: 6 }}>{testCase}</div>
+            {loading ? <div style={{ color: "#a5b4fc", fontSize: 13, padding: "20px 0", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><div style={{ width: 14, height: 14, border: "2px solid #6366f1", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} /> Converting...</div>
+              : <><pre style={{ background: dark ? "#020617" : "#f8fafc", border: `1px solid ${bd}`, borderRadius: 8, padding: 14, fontSize: 13, color: dark ? "#a5b4fc" : "#4338ca", overflowX: "auto", whiteSpace: "pre-wrap", fontFamily: "monospace", lineHeight: 1.7 }}>{gherkin}</pre><button onClick={() => navigator.clipboard.writeText(gherkin)} className="btn-primary" style={{ marginTop: 12, fontSize: 13, padding: "7px 16px" }}>Copy Gherkin</button></>}
+          </div>
+        </div>
+      );
+    }
+
+    function JiraModal({ results, onClose, dark }) {
+      const [copied, setCopied] = useState(false), [tab, setTab] = useState("jira");
+      const jiraFormat = CATEGORIES.map(c => `h2. ${c.icon} ${c.label} Test Scenarios\n` + results[c.key].split("\n").filter(l => l.trim()).map(tc => `* ${tc}`).join("\n")).join("\n\n");
+      const csvFormat = "Category,Scenario\n" + CATEGORIES.flatMap(c => results[c.key].split("\n").filter(l => l.trim()).map(tc => `"${c.label}","${tc.replace(/"/g, '""')}"`)).join("\n");
+      const content = tab === "jira" ? jiraFormat : csvFormat;
+      const bg = dark ? "#0f172a" : "#fff", bd = dark ? "#1e293b" : "#e2e8f0", tx = dark ? "#e2e8f0" : "#1e293b", mu = dark ? "#64748b" : "#94a3b8";
+      return (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(4px)" }} onClick={onClose}>
+          <div className="fade-up" style={{ background: bg, border: `1px solid ${bd}`, borderRadius: 16, padding: 24, maxWidth: 640, width: "100%", maxHeight: "85vh", overflow: "auto" }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: tx }}>📤 Export Test Scenarios</span>
+              <button onClick={onClose} style={{ background: "none", border: "none", color: mu, fontSize: 22, cursor: "pointer" }}>×</button>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, background: dark ? "#1e293b" : "#f1f5f9", borderRadius: 8, padding: 4 }}>
+              {[["jira", "🟦 JIRA Markup"], ["csv", "📊 CSV"]].map(([k, l]) => <button key={k} onClick={() => setTab(k)} style={{ flex: 1, background: tab === k ? (dark ? "#0f172a" : "#fff") : "transparent", color: tab === k ? tx : mu, border: "none", borderRadius: 6, padding: "7px 14px", fontSize: 13, cursor: "pointer", fontWeight: tab === k ? 600 : 400 }}>{l}</button>)}
+            </div>
+            <pre style={{ background: dark ? "#020617" : "#f8fafc", border: `1px solid ${bd}`, borderRadius: 8, padding: 14, fontSize: 12, color: dark ? "#94a3b8" : "#475569", overflowX: "auto", whiteSpace: "pre-wrap", fontFamily: "monospace", lineHeight: 1.6, maxHeight: 320 }}>{content}</pre>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button onClick={() => { navigator.clipboard.writeText(content); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="btn-primary" style={{ fontSize: 13, padding: "7px 16px" }}>{copied ? "✓ Copied!" : "Copy to Clipboard"}</button>
+              {tab === "csv" && <button onClick={() => { const a = document.createElement("a"); a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csvFormat); a.download = "test-scenarios.csv"; document.body.appendChild(a); a.click(); document.body.removeChild(a); }} className="btn-secondary" style={{ background: dark ? "#0f172a" : "#f8fafc", color: "#22c55e", border: "1px solid #22c55e" }}>⬇ Download CSV</button>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function TestCaseCard({ scenario, tcId, dark, catColor }) {
+      const [expanded, setExpanded] = useState(false), [loading, setLoading] = useState(false), [tc, setTc] = useState(null), [copied, setCopied] = useState(false);
+      const bg = dark ? "#0f172a" : "#fff", bd = dark ? "#1e293b" : "#e2e8f0", tx = dark ? "#e2e8f0" : "#1e293b", mu = dark ? "#94a3b8" : "#64748b";
+      const expand = async () => {
+        if (tc) { setExpanded(!expanded); return; }
+        setExpanded(true); setLoading(true);
+        try {
+          const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 600, messages: [{ role: "user", content: `Expand this test scenario into a detailed test case. Return ONLY valid JSON:\n{"preconditions":"string","steps":["step 1","step 2"],"expectedResult":"string","priority":"High"|"Medium"|"Low"}\n\nTest scenario: ${scenario}` }] }) });
+          const data = await res.json(); const raw = data.content?.map(c => c.text || "").join("") || "{}";
+          setTc(JSON.parse(raw.replace(/```json|```/g, "").trim()));
+        } catch { setTc({ preconditions: "N/A", steps: ["Could not generate."], expectedResult: "N/A", priority: "Medium" }); }
+        setLoading(false);
+      };
+      const pCol = { High: "#ef4444", Medium: "#f59e0b", Low: "#22c55e" };
+      return (
+        <div style={{ background: bg, border: `1px solid ${bd}`, borderRadius: 10, marginBottom: 10, overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", cursor: "pointer" }} onClick={expand}>
+            <span style={{ fontSize: 11, fontFamily: "monospace", color: catColor, background: dark ? "#1e293b" : "#f1f5f9", padding: "3px 9px", borderRadius: 6, whiteSpace: "nowrap", fontWeight: 700 }}>{tcId}</span>
+            <span style={{ fontSize: 14, color: tx, flex: 1, lineHeight: 1.5 }}>{scenario}</span>
+            <span className="expand-arrow" style={{ fontSize: 20, color: mu, transform: expanded ? "rotate(90deg)" : "rotate(0deg)", display: "inline-block" }}>›</span>
+          </div>
+          {expanded && (
+            <div className="slide-in" style={{ borderTop: `1px solid ${bd}`, padding: 16, background: dark ? "#080e1a" : "#f8fafc" }}>
+              {loading ? <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[80,100,60,100].map((w,i) => <div key={i} className={dark?"skeleton":"skeleton-light"} style={{width:`${w}%`,height:16}} />)}</div>
+                : tc && (
+                  <div className="fade-in" style={{ fontSize: 13, lineHeight: 1.7 }}>
+                    <div style={{ marginBottom: 12 }}><span style={{ background: (pCol[tc.priority]||"#f59e0b")+"22", color: pCol[tc.priority]||"#f59e0b", border:`1px solid ${(pCol[tc.priority]||"#f59e0b")}44`, borderRadius:99, padding:"3px 12px", fontSize:12, fontWeight:600 }}>🎯 {tc.priority} Priority</span></div>
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:mu, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>🔧 Preconditions</div>
+                      <div style={{ color:tx, background:bg, border:`1px solid ${bd}`, borderRadius:8, padding:"10px 12px" }}>{tc.preconditions}</div>
+                    </div>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:12, marginBottom:12 }}>
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:700, color:mu, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>📋 Test Steps</div>
+                        <div style={{ background:bg, border:`1px solid ${bd}`, borderRadius:8, padding:"10px 12px" }}>
+                          {tc.steps.map((s,i) => <div key={i} style={{ display:"flex", gap:10, padding:"5px 0", borderBottom:i<tc.steps.length-1?`1px solid ${bd}`:"none" }}><span style={{ color:catColor, fontWeight:700, minWidth:22 }}>{i+1}.</span><span style={{ color:tx }}>{s}</span></div>)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize:11, fontWeight:700, color:mu, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:6 }}>✅ Expected Result</div>
+                        <div style={{ color:"#22c55e", background:dark?"#052e16":"#f0fdf4", border:"1px solid #22c55e44", borderRadius:8, padding:12, lineHeight:1.7 }}>{tc.expectedResult}</div>
+                      </div>
+                    </div>
+                    <button onClick={() => { navigator.clipboard.writeText(`Test Case ID: ${tcId}\nScenario: ${scenario}\nPreconditions: ${tc.preconditions}\nSteps:\n${tc.steps.map((s,i)=>`  ${i+1}. ${s}`).join("\n")}\nExpected Result: ${tc.expectedResult}\nPriority: ${tc.priority}`); setCopied(true); setTimeout(()=>setCopied(false),2000); }} className="btn-secondary" style={{ background:dark?"#1e293b":"#e2e8f0", color:mu, border:`1px solid ${bd}` }}>{copied?"✓ Copied":"Copy Test Case"}</button>
+                  </div>
+                )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function TestCasesPage({ results, dark, onGoGenerate }) {
+      const [activecat, setActivecat] = useState("positive");
+      const mu = dark ? "#64748b" : "#94a3b8", bd = dark ? "#1e293b" : "#e2e8f0";
+      const cat = CATEGORIES.find(c => c.key === activecat);
+      const scenarios = results ? results[activecat].split("\n").filter(l => l.trim()) : [];
+      const prefix = { positive:"TC-P", negative:"TC-N", performance:"TC-PF", security:"TC-S", accessibility:"TC-A" };
+      if (!results) return <EmptyState icon="🧪" title="No scenarios yet" desc="Go to Test Scenarios, paste your requirements and generate first." action="Go Generate" onAction={onGoGenerate} dark={dark} />;
+      return (
+        <div className="page-transition">
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:20 }}>
+            {CATEGORIES.map(c => { const count = results[c.key].split("\n").filter(l=>l.trim()).length; return <button key={c.key} onClick={()=>setActivecat(c.key)} className="tab-btn" style={{ background:activecat===c.key?c.bg[dark?"dark":"light"]:(dark?"#0f172a":"#fff"), color:activecat===c.key?c.color:mu, border:`1px solid ${activecat===c.key?c.color:bd}`, borderRadius:8, padding:"7px 14px", fontSize:13, cursor:"pointer", fontWeight:activecat===c.key?600:400, display:"flex", alignItems:"center", gap:6 }}>{c.icon} {c.label} <span style={{ background:activecat===c.key?c.color+"33":(dark?"#1e293b":"#f1f5f9"), color:activecat===c.key?c.color:mu, borderRadius:99, padding:"1px 7px", fontSize:11, fontWeight:700 }}>{count}</span></button>; })}
+          </div>
+          <div style={{ fontSize:13, color:mu, marginBottom:14 }}>💡 Click <strong style={{ color:cat.color }}>›</strong> on any scenario to expand into a full test case.</div>
+          {scenarios.map((s,i) => <TestCaseCard key={i} scenario={s} tcId={`${prefix[activecat]}-${String(i+1).padStart(3,"0")}`} dark={dark} catColor={cat.color} />)}
+        </div>
+      );
+    }
+
+    function CoveragePage({ results, requirement, dark, onGoGenerate }) {
+      const [coverage, setCoverage] = useState(null), [loading, setLoading] = useState(false), [generated, setGenerated] = useState(false), [err, setErr] = useState(null);
+      const bd = dark?"#1e293b":"#e2e8f0", tx = dark?"#e2e8f0":"#1e293b", mu = dark?"#64748b":"#94a3b8", card = dark?"#0d1424":"#f8fafc";
+      const STATUS = { well:{label:"Well Covered",color:"#22c55e",bg:dark?"#052e16":"#f0fdf4",border:"#22c55e44"}, weak:{label:"Weakly Covered",color:"#f59e0b",bg:dark?"#2d1a00":"#fffbeb",border:"#f59e0b44"}, none:{label:"Not Covered",color:"#ef4444",bg:dark?"#2d0a0a":"#fff5f5",border:"#ef444444"} };
+      const callApi = async (prompt, max=1200) => { const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max,messages:[{role:"user",content:prompt}]})}); const data = await res.json(); const raw = data.content?.map(c=>c.text||"").join("")||""; const m = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/); if(!m) throw new Error("No JSON"); return JSON.parse(m[0]); };
+      const analyse = async () => {
+        setLoading(true); setErr(null);
+        try {
+          const reqLines = requirement.split("\n").filter(l=>/^\d+\./.test(l.trim())).map(l=>l.trim());
+          const scenarioText = CATEGORIES.flatMap(c=>results[c.key].split("\n").filter(l=>l.trim()).map(s=>`[${c.label}] ${s}`)).join("\n");
+          const [reqs, states] = await Promise.all([
+            callApi(`You are a strict QA auditor. Return ONLY a JSON array:\n[{"reqId":"1","requirement":"short text","status":"well"|"weak"|"none","matchedCount":2,"gap":null,"suggestion":null},...]\nRequirements:\n${reqLines.join("\n")}\nScenarios:\n${scenarioText}`,1200),
+            callApi(`Return ONLY JSON array:\n[{"state":"Name","status":"well"|"weak"|"none","matchedCount":2,"gap":null},...]\nStates: ${results.states.map(s=>s.label).join(", ")}\nScenarios:\n${scenarioText}`,800)
+          ]);
+          const r=Array.isArray(reqs)?reqs:[], s=Array.isArray(states)?states:[];
+          const topGapReq=r.find(x=>x.status==="none")||r.find(x=>x.status==="weak");
+          setCoverage({requirements:r,stateCoverage:s,summary:{wellCount:r.filter(x=>x.status==="well").length,weakCount:r.filter(x=>x.status==="weak").length,noneCount:r.filter(x=>x.status==="none").length,topGap:topGapReq?.gap||(topGapReq?`No coverage for: ${topGapReq.requirement}`:null)}});
+          setGenerated(true);
+        } catch(e) { setErr("Analysis failed: "+e.message); }
+        setLoading(false);
+      };
+      if (!results) return <EmptyState icon="📊" title="No data yet" desc="Generate test scenarios first, then run gap analysis." action="Go Generate" onAction={onGoGenerate} dark={dark} />;
+      const catData = CATEGORIES.map(c=>({...c,count:results[c.key].split("\n").filter(l=>l.trim()).length}));
+      const total = catData.reduce((a,c)=>a+c.count,0);
+      return (
+        <div className="page-transition">
+          <div style={{ background:dark?"#1a1a2e":"#fef9c3", border:`1px solid ${dark?"#334155":"#fde047"}`, borderRadius:10, padding:"10px 14px", marginBottom:20, fontSize:13, color:dark?"#94a3b8":"#713f12" }}>
+            ⚠️ <strong>Coverage Note:</strong> AI gap-detection based on scenario-to-requirement mapping — not code or runtime coverage.
+          </div>
+          <div style={{ background:card, border:`1px solid ${bd}`, borderRadius:12, padding:20, marginBottom:20 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:mu, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:14 }}>📊 Scenario Distribution</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(min(100%,180px),1fr))", gap:10, marginBottom:14 }}>
+              {catData.map(c=><div key={c.key} className="fade-up" style={{ background:c.bg[dark?"dark":"light"], border:`1px solid ${c.color}44`, borderRadius:8, padding:"12px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}><span style={{ fontSize:13, color:c.color, fontWeight:600 }}>{c.icon} {c.label}</span><div style={{ textAlign:"right" }}><div style={{ fontSize:20, fontWeight:700, color:c.color }}>{c.count}</div><div style={{ fontSize:11, color:mu }}>{Math.round(c.count/total*100)}%</div></div></div>)}
+            </div>
+            <div style={{ display:"flex", height:22, borderRadius:6, overflow:"hidden", gap:2 }}>
+              {catData.map(c=><div key={c.key} style={{ background:c.color, width:`${c.count/total*100}%`, display:"flex", alignItems:"center", justifyContent:"center" }}><span style={{ fontSize:10, color:"#fff", fontWeight:700, padding:"0 4px" }}>{Math.round(c.count/total*100)}%</span></div>)}
+            </div>
+          </div>
+          {!generated && (
+            <div className="fade-up" style={{ background:card, border:`1px solid ${bd}`, borderRadius:12, padding:28, marginBottom:20, textAlign:"center" }}>
+              <div style={{ fontSize:40, marginBottom:12 }}>🔍</div>
+              <div style={{ fontSize:16, color:tx, marginBottom:6, fontWeight:700 }}>Requirement Gap Analysis</div>
+              <div style={{ fontSize:13, color:mu, marginBottom:20 }}>AI critically audits your scenarios against each requirement.</div>
+              <button onClick={analyse} disabled={loading} className="btn-primary">{loading?"⏳ Analysing...":"🔍 Run Gap Analysis"}</button>
+              {err && <div style={{ marginTop:12, color:"#f87171", background:"#2d0a0a", borderRadius:8, padding:"10px 14px", fontSize:13 }}>{err}</div>}
+            </div>
+          )}
+          {coverage && (
+            <div className="fade-in">
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12, marginBottom:20 }}>
+                {[["🟢","#22c55e","Well Covered",coverage.summary.wellCount],["🟡","#f59e0b","Weakly Covered",coverage.summary.weakCount],["🔴","#ef4444","Not Covered",coverage.summary.noneCount]].map(([e,c,l,n])=><div key={l} style={{ background:card, border:`1px solid ${bd}`, borderRadius:12, padding:16, textAlign:"center" }}><div style={{ fontSize:24, marginBottom:4 }}>{e}</div><div style={{ fontSize:26, fontWeight:700, color:c }}>{n}</div><div style={{ fontSize:12, color:mu }}>{l}</div></div>)}
+              </div>
+              {coverage.summary.topGap && <div style={{ background:dark?"#2d1a00":"#fffbeb", border:"1px solid #f59e0b44", borderRadius:10, padding:"12px 16px", marginBottom:20, fontSize:13, color:dark?"#fbbf24":"#92400e" }}>🚨 <strong>Top Gap:</strong> {coverage.summary.topGap}</div>}
+              <div style={{ background:card, border:`1px solid ${bd}`, borderRadius:12, padding:20, marginBottom:20 }}>
+                <div style={{ fontSize:12, fontWeight:700, color:mu, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:14 }}>📋 Requirement Gap Analysis</div>
+                {coverage.requirements.map((r,i)=>{ const st=STATUS[r.status]||STATUS.none; return (
+                  <div key={i} className="fade-up" style={{ animationDelay:`${i*0.05}s`, background:dark?"#080e1a":"#f8fafc", border:`1px solid ${st.border}`, borderRadius:10, padding:"14px 16px", marginBottom:10 }}>
+                    <div style={{ display:"flex", alignItems:"flex-start", gap:10, flexWrap:"wrap" }}>
+                      <span style={{ fontFamily:"monospace", fontSize:11, color:"#a5b4fc", background:dark?"#1e293b":"#e2e8f0", padding:"2px 8px", borderRadius:6, fontWeight:700 }}>REQ-{r.reqId}</span>
+                      <span style={{ flex:1, color:tx, fontSize:14, lineHeight:1.5 }}>{r.requirement}</span>
+                      <span style={{ background:st.bg, color:st.color, border:`1px solid ${st.border}`, borderRadius:99, padding:"2px 10px", fontSize:11, fontWeight:700, whiteSpace:"nowrap" }}>{r.status==="well"?"🟢":r.status==="weak"?"🟡":"🔴"} {st.label}</span>
+                    </div>
+                    {r.gap && <div style={{ background:dark?"#1a1210":"#fff7ed", border:"1px solid #f59e0b33", borderRadius:8, padding:"8px 12px", marginTop:8 }}><div style={{ fontSize:11, fontWeight:700, color:"#f59e0b", marginBottom:4 }}>⚠️ GAP DETECTED</div><div style={{ fontSize:12, color:dark?"#fcd34d":"#92400e" }}>{r.gap}</div>{r.suggestion&&<div style={{ fontSize:12, color:dark?"#a5b4fc":"#4338ca", borderTop:`1px solid ${dark?"#1e293b":"#e2e8f0"}`, paddingTop:6, marginTop:4 }}>💡 <strong>Suggested:</strong> {r.suggestion}</div>}</div>}
+                  </div>
+                );})}
+              </div>
+              <div style={{ textAlign:"center" }}><button onClick={()=>{setGenerated(false);setCoverage(null);}} className="btn-secondary" style={{ background:dark?"#1e293b":"#e2e8f0", color:mu, border:`1px solid ${dark?"#334155":"#e2e8f0"}` }}>🔄 Re-run Analysis</button></div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const [dark, setDark] = useState(true);
+      const [view, setView] = useState("landing");
+      const [page, setPage] = useState("scenarios");
+      const [requirement, setRequirement] = useState(PREPOPULATED);
+      const [results, setResults] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [loadingStep, setLoadingStep] = useState(0);
+      const [activeTab, setActiveTab] = useState("positive");
+      const [copied, setCopied] = useState(null);
+      const [error, setError] = useState(null);
+      const [selectedState, setSelectedState] = useState(null);
+      const [gherkinCase, setGherkinCase] = useState(null);
+      const [showJira, setShowJira] = useState(false);
+
+      const d = dark, bg = d?"#0a0f1e":"#f8fafc", card = d?"#0f172a":"#fff";
+      const border = d?"#1e293b":"#e2e8f0", text = d?"#e2e8f0":"#1e293b";
+      const muted = d?"#64748b":"#94a3b8", sub = d?"#94a3b8":"#64748b";
+
+      useEffect(() => { document.body.style.background = bg; document.body.style.color = text; }, [bg, text]);
+
+      const generate = async () => {
+        if (!requirement.trim()) return;
+        setLoading(true); setLoadingStep(0); setResults(null); setError(null); setSelectedState(null);
+        let step=0; const iv=setInterval(()=>{ step+=1; if(step<7) setLoadingStep(step); },1000);
+        try {
+          const prompt = `You are a senior QA engineer. Return ONLY structured output, no extra explanation.
+
+POSITIVE:
+1. [test scenario]
+(generate at least 6 positive/happy path test scenarios)
+
+NEGATIVE:
+1. [test scenario]
+(generate at least 6 negative/error test scenarios)
+
+PERFORMANCE:
+1. [test scenario]
+(generate at least 5 performance test scenarios)
+
+SECURITY:
+1. [test scenario]
+(generate at least 5 security test scenarios)
+
+ACCESSIBILITY:
+1. [test scenario]
+(generate at least 5 accessibility test scenarios covering WCAG guidelines, screen readers, keyboard navigation, colour contrast, focus management)
+
+DIAGRAM:
+Use EXACTLY: "STATE: <name>" and "TRANSITION: <from> -> <to> : <label>"
+State names: 2-4 words. Transition labels: 2-4 words. 5-8 states total.
+
+Requirements:
+${requirement}`;
+          const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1800,messages:[{role:"user",content:prompt}]})});
+          const data = await res.json(); const txt = data.content?.map(c=>c.text||"").join("\n")||"";
+          const ext=(l,n)=>{ const m=txt.match(new RegExp(`${l}:\\s*\\n([\\s\\S]*?)(?=\\n${n}:|$)`,"i")); return m?m[1].trim():""; };
+          const dr=ext("DIAGRAM","ZZEND");
+          const states=dr.split("\n").filter(l=>/^STATE:/i.test(l.trim())).map((l,i)=>({id:`s${i}`,label:l.replace(/^STATE:\s*/i,"").trim()}));
+          const si={}; states.forEach(s=>{si[s.label]=s.id;});
+          const transitions=dr.split("\n").filter(l=>/^TRANSITION:/i.test(l.trim())).map(l=>{ const m=l.replace(/^TRANSITION:\s*/i,"").match(/^(.+?)\s*->\s*(.+?)\s*:\s*(.+)$/); return m?{from:si[m[1].trim()],to:si[m[2].trim()],label:m[3].trim()}:null; }).filter(t=>t&&t.from&&t.to);
+          setResults({positive:ext("POSITIVE","NEGATIVE"),negative:ext("NEGATIVE","PERFORMANCE"),performance:ext("PERFORMANCE","SECURITY"),security:ext("SECURITY","ACCESSIBILITY"),accessibility:ext("ACCESSIBILITY","DIAGRAM"),states,transitions});
+        } catch { setError("Something went wrong. Please try again."); }
+        clearInterval(iv); setLoadingStep(7); setTimeout(()=>setLoading(false),400);
+      };
+
+      const totalScenarios = results?CATEGORIES.reduce((a,c)=>a+results[c.key].split("\n").filter(l=>l.trim()).length,0):0;
+      const stateTestCases = selectedState&&results?results.positive.split("\n").filter(l=>{ const st=results.states?.find(s=>s.id===selectedState); return st&&l.toLowerCase().includes(st.label.toLowerCase().split(" ")[0]); }):[];
+      const PAGES = [{key:"scenarios",label:"📋 Scenarios"},{key:"testcases",label:"🧪 Test Cases",badge:results?totalScenarios:null,disabled:!results},{key:"coverage",label:"📊 Coverage",disabled:!results}];
+
+      return (
+        <div style={{ minHeight:"100vh", background:bg, color:text, fontFamily:"'Inter',sans-serif" }}>
+          {gherkinCase && <GherkinModal testCase={gherkinCase} onClose={()=>setGherkinCase(null)} dark={d} />}
+          {showJira && results && <JiraModal results={results} onClose={()=>setShowJira(false)} dark={d} />}
+
+          <nav style={{ position:"sticky", top:0, zIndex:50, background:d?"rgba(10,15,30,0.92)":"rgba(248,250,252,0.92)", backdropFilter:"blur(10px)", borderBottom:`1px solid ${border}`, padding:"0 16px" }}>
+            <div style={{ maxWidth:940, margin:"0 auto", display:"flex", alignItems:"center", justifyContent:"space-between", height:56 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer" }} onClick={()=>setView("landing")}>
+                <svg width="28" height="28" viewBox="0 0 52 52" fill="none"><rect width="52" height="52" rx="10" fill={d?"#1e293b":"#e2e8f0"}/><rect x="13" y="14" width="26" height="28" rx="3" fill={d?"#0f172a":"#f8fafc"} stroke="#6366f1" strokeWidth="1.5"/><rect x="20" y="11" width="12" height="6" rx="3" fill={d?"#1e293b":"#e2e8f0"} stroke="#6366f1" strokeWidth="1.5"/><polyline points="18,24 21,27 27,21" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="30" y1="24" x2="36" y2="24" stroke="#475569" strokeWidth="1.5" strokeLinecap="round"/><line x1="18" y1="32" x2="21" y2="35" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/><line x1="21" y1="32" x2="18" y2="35" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/><line x1="25" y1="33.5" x2="36" y2="33.5" stroke="#475569" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <span style={{ fontWeight:700, fontSize:15, color:text }}>Test Suite Generator</span>
+                <span style={{ background:d?"#1e293b":"#e2e8f0", color:"#818cf8", fontSize:10, padding:"2px 7px", borderRadius:4, fontFamily:"monospace" }}>AI</span>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                {view==="app" && (
+                  <div style={{ display:"flex", gap:4, background:d?"#0f172a":"#f1f5f9", borderRadius:8, padding:3 }}>
+                    {PAGES.map(p=>(
+                      <button key={p.key} onClick={()=>!p.disabled&&setPage(p.key)} disabled={p.disabled} className="tab-btn" style={{ background:page===p.key?(d?"#1e293b":"#fff"):"transparent", color:page===p.key?text:p.disabled?(d?"#334155":"#cbd5e1"):muted, border:page===p.key?`1px solid ${border}`:"1px solid transparent", borderRadius:6, padding:"5px 12px", fontSize:13, cursor:p.disabled?"not-allowed":"pointer", fontWeight:page===p.key?600:400, display:"flex", alignItems:"center", gap:6, whiteSpace:"nowrap" }}>
+                        {p.label}
+                        {p.badge!=null&&<span style={{ background:"#6366f1", color:"#fff", borderRadius:99, padding:"1px 6px", fontSize:10, fontWeight:700 }}>{p.badge}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={()=>setDark(!d)} style={{ background:d?"#1e293b":"#e2e8f0", border:`1px solid ${border}`, borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:13, color:text }}>{d?"☀️":"🌙"}</button>
+              </div>
+            </div>
+          </nav>
+
+          <div style={{ maxWidth:940, margin:"0 auto", padding:"24px 16px 60px" }}>
+            {view==="landing" && <LandingPage onStart={()=>{setView("app");setPage("scenarios");}} dark={d} />}
+            {view==="app" && (
+              <>
+                {page==="scenarios" && (
+                  <div className="page-transition">
+                    <div style={{ marginBottom:20 }}>
+                      <label style={{ fontSize:14, color:sub, marginBottom:8, display:"block", fontWeight:600 }}>Feature Requirements</label>
+                      <textarea style={{ width:"100%", minHeight:160, background:card, border:`1px solid ${border}`, borderRadius:10, color:text, fontSize:14, padding:14, resize:"vertical", fontFamily:"monospace", lineHeight:1.6, boxSizing:"border-box" }}
+                        value={requirement} onChange={e=>setRequirement(e.target.value)}
+                        onFocus={e=>e.target.style.borderColor="#6366f1"}
+                        onBlur={e=>e.target.style.borderColor=border}
+                        placeholder="Paste your feature requirements here..." />
+                    </div>
+                    <button className="btn-primary" onClick={generate} disabled={loading||!requirement.trim()}>{loading?"⏳ Generating...":"🚀 Generate Test Suite"}</button>
+
+                    {loading && (
+                      <div className="fade-up" style={{ marginTop:20, background:card, border:`1px solid ${border}`, borderRadius:12, padding:"20px 24px" }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:8 }}>
+                          <span style={{ fontSize:13, fontWeight:600, color:"#a5b4fc" }}>{STEPS[loadingStep]?.icon} {STEPS[loadingStep]?.label}</span>
+                          <span style={{ fontSize:12, color:muted }}>{Math.round((loadingStep/(STEPS.length-1))*100)}%</span>
+                        </div>
+                        <div style={{ background:d?"#1e293b":"#e2e8f0", borderRadius:99, height:6, overflow:"hidden", marginBottom:14 }}>
+                          <div style={{ height:"100%", borderRadius:99, background:"linear-gradient(90deg,#6366f1,#22d3ee)", width:`${(loadingStep/(STEPS.length-1))*100}%`, transition:"width 0.7s ease" }} />
+                        </div>
+                        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                          {STEPS.map((s,i)=><div key={i} style={{ fontSize:11, padding:"3px 10px", borderRadius:99, background:i<loadingStep?(d?"#1a2e1a":"#f0fdf4"):i===loadingStep?(d?"#1e1a3a":"#ede9fe"):(d?"#1e293b":"#f1f5f9"), color:i<loadingStep?"#22c55e":i===loadingStep?"#a5b4fc":muted, border:`1px solid ${i<loadingStep?"#22c55e44":i===loadingStep?"#6366f1":border}`, display:"flex", alignItems:"center", gap:4 }}>{i<loadingStep?"✓":s.icon} {s.label.replace("...","")}</div>)}
+                        </div>
+                      </div>
+                    )}
+
+                    {error && <div className="fade-up" style={{ color:"#f87171", background:"#2d0a0a", borderRadius:10, padding:"12px 16px", fontSize:14, marginTop:12 }}>{error}</div>}
+
+                    {results && (
+                      <div className="fade-in" style={{ marginTop:28 }}>
+                        <div style={{ marginBottom:24, padding:18, background:d?"#0d1424":"#f0f4ff", borderRadius:12, border:`1px solid ${d?"#1e2d4a":"#c7d2fe"}` }}>
+                          <div style={{ fontSize:12, fontWeight:700, color:muted, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:4 }}>🗺 Happy Path — State Diagram</div>
+                          <div style={{ fontSize:12, color:muted, marginBottom:12 }}>💡 Click any state pill to see related scenarios.</div>
+                          <StateDiagram states={results.states} transitions={results.transitions} selectedState={selectedState} onSelectState={setSelectedState} dark={d} />
+                          {selectedState && (
+                            <div className="slide-in" style={{ marginTop:14, background:d?"#1e1a3a":"#ede9fe", borderRadius:8, padding:"12px 14px", border:"1px solid #6366f1" }}>
+                              <div style={{ fontSize:12, fontWeight:600, color:"#a5b4fc", marginBottom:8 }}>📌 {results.states.find(s=>s.id===selectedState)?.label}</div>
+                              {stateTestCases.length>0?stateTestCases.map((tc,i)=><div key={i} style={{ fontSize:13, color:d?"#c7d2fe":"#4338ca", padding:"4px 0", borderBottom:`1px solid ${d?"#312e81":"#c7d2fe"}` }}>{tc}</div>):<div style={{ fontSize:13, color:muted }}>No direct match found.</div>}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, flexWrap:"wrap", gap:10 }}>
+                          <div style={{ fontSize:12, fontWeight:700, color:muted, textTransform:"uppercase", letterSpacing:"0.08em" }}>🧪 Test Scenarios</div>
+                          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                            <button onClick={()=>setPage("testcases")} className="btn-primary" style={{ fontSize:13, padding:"7px 16px" }}>🧪 Derive Test Cases →</button>
+                            <button onClick={()=>setPage("coverage")} className="btn-secondary" style={{ background:d?"#1e293b":"#e2e8f0", color:d?"#94a3b8":"#475569", border:`1px solid ${border}` }}>📊 Coverage →</button>
+                            <button onClick={()=>setShowJira(true)} className="btn-secondary" style={{ background:d?"#1e293b":"#e2e8f0", color:d?"#94a3b8":"#475569", border:`1px solid ${border}` }}>📤 Export</button>
+                          </div>
+                        </div>
+                        <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+                          {CATEGORIES.map(c=><button key={c.key} onClick={()=>setActiveTab(c.key)} className="tab-btn" style={{ background:activeTab===c.key?c.bg[d?"dark":"light"]:card, color:activeTab===c.key?c.color:muted, border:`1px solid ${activeTab===c.key?c.color:border}`, borderRadius:8, padding:"7px 14px", fontSize:13, cursor:"pointer", fontWeight:activeTab===c.key?600:400 }}>{c.icon} {c.label}</button>)}
+                        </div>
+                        <div className="slide-in" style={{ background:card, borderRadius:10, padding:16, border:`1px solid ${border}` }}>
+                          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:10 }}>
+                            <button onClick={()=>{ navigator.clipboard.writeText(results[activeTab]); setCopied(activeTab); setTimeout(()=>setCopied(null),2000); }} className="btn-secondary" style={{ background:d?"#1e293b":"#e2e8f0", color:muted, border:"none", fontSize:12 }}>{copied===activeTab?"✓ Copied":"Copy All"}</button>
+                          </div>
+                          {results[activeTab].split("\n").filter(l=>l.trim()).map((line,i)=>(
+                            <div key={i} className="fade-up" style={{ animationDelay:`${i*0.03}s`, padding:"10px 0", borderBottom:`1px solid ${border}`, fontSize:14, color:d?"#cbd5e1":"#334155", lineHeight:1.7, display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
+                              <span>{line}</span>
+                              {activeTab==="positive"&&<button onClick={()=>setGherkinCase(line)} className="btn-secondary" style={{ flexShrink:0, background:d?"#1e1a3a":"#ede9fe", color:"#818cf8", border:"1px solid #6366f1", fontSize:11, padding:"2px 9px" }}>🥒 Gherkin</button>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {!results&&!loading&&<div className="fade-up" style={{ marginTop:32, textAlign:"center", padding:"32px 0", color:muted, fontSize:14 }}>👆 Paste your requirements above and hit <strong style={{ color:"#818cf8" }}>Generate Test Suite</strong> to get started</div>}
+                  </div>
+                )}
+                {page==="testcases"&&<TestCasesPage results={results} dark={d} onGoGenerate={()=>setPage("scenarios")} />}
+                {page==="coverage"&&<CoveragePage results={results} requirement={requirement} dark={d} onGoGenerate={()=>setPage("scenarios")} />}
+              </>
+            )}
+          </div>
+
+          <div style={{ borderTop:`1px solid ${border}`, padding:16, textAlign:"center", fontSize:12, color:muted }}>
+            Conceived & designed by <span style={{ color:"#a5b4fc", fontWeight:600 }}>Yogesh Deshmukh</span> · Powered by Anthropic Claude
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById("root"));
+  </script>
+</body>
+</html>
